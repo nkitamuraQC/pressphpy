@@ -11,6 +11,7 @@ A Python code for Lattice Model with classical phonons under pressure
 
 If you use this work in your research, please cite:
 
+```bibtex
 @misc{
     yourname2026,   
     author       = {Naoki Kitamura},   
@@ -18,3 +19,4 @@ If you use this work in your research, please cite:
     year         = {2026},   
     howpublished = {\url{https://github.com/nkitamuraQC/pressphpy.git}}, 
 } 
+```
