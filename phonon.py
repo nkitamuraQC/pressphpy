@@ -17,7 +17,7 @@ class Phonon:
 
         self.K1 = 10
         self.K2 = 10
-        self.do_print = True
+        self.do_print = False
         self.use_multiplicative_bonding = True
         self.use_negative_transfer_notation = False
         self.use_positive_transfer = False
@@ -28,64 +28,55 @@ class Phonon:
         self.site_potential = np.ones((self.norb))
         return
 
-    def oneshot(self, pressure: float= None):
+    def oneshot(self, pressure: float= 0.0):
         self.init_params()
         dm = self.dm_calc(self.int1e, self.int2e, self.norb, self.nelec)
-        # print(dm)
-        if pressure is None:
-            dm_offdiag = copy.deepcopy(dm)
-            for i in range(dm_offdiag.shape[0]):
-                dm_offdiag[i, i] = 1.0
-            # self.bonding = self.int1e * dm_offdiag / self.K1
-            self.bonding = dm_offdiag / self.K1
-            self.site_potential = np.diag(dm) / self.K2
-        else:
-            for i in range(dm.shape[0]):
-                for j in range(dm.shape[1]):
-                    if i != j:
-                        if self.use_multiplicative_bonding:
-                            tdm = dm[i, j] * self.int1e[i, j]
+        for i in range(dm.shape[0]):
+            for j in range(dm.shape[1]):
+                if i != j:
+                    if self.use_multiplicative_bonding:
+                        tdm = dm[i, j] * self.int1e[i, j]
+                    else:
+                        tdm = dm[i, j]
+                    if self.use_negative_transfer_notation:
+                        tdm *= -1
+                    coeff = [self.K1, tdm, 0, -pressure]
+                    roots = np.roots(coeff)
+                    if self.do_print:
+                        print(f"roots @ {i} {j}=", roots)
+                    if self.use_test_impl:
+                        if tdm < 0:
+                            self.use_positive_transfer = False
                         else:
-                            tdm = dm[i, j]
-                        if self.use_negative_transfer_notation:
-                            tdm *= -1
-                        coeff = [self.K1, tdm, 0, -pressure]
-                        roots = np.roots(coeff)
-                        if self.do_print:
-                            print(f"roots @ {i} {j}=", roots)
-                        if self.use_test_impl:
-                            if tdm < 0:
-                                self.use_positive_transfer = False
-                            else:
-                                self.use_positive_transfer = True
-                            if self.use_positive_transfer:
-                                max_root_idx = np.argmax(roots.real)
-                                max_root = roots[max_root_idx]
-                                imag_roots = np.iscomplex(roots[max_root_idx])
-                                if self.do_print:
-                                    print(f"max_root @ {i} {j}=", max_root, "imaginary part =", imag_roots)
-                                    print(f"tdm @ {i} {j}=", tdm)
-                                self.bonding[i, j] = max_root
-                            else:
-                                min_root_idx = np.argmin(roots.real)
-                                min_root = roots[min_root_idx]
-                                imag_roots = np.iscomplex(roots[min_root_idx])
-                                if self.do_print:
-                                    print(f"min_root @ {i} {j}=", min_root, "imaginary part =", imag_roots)
-                                    print(f"tdm @ {i} {j}=", tdm)
-                                self.bonding[i, j] = min_root
-                        else:
+                            self.use_positive_transfer = True
+                        if self.use_positive_transfer:
                             max_root_idx = np.argmax(roots.real)
-                            max_root = roots[max_root_idx].real
+                            max_root = roots[max_root_idx]
                             imag_roots = np.iscomplex(roots[max_root_idx])
                             if self.do_print:
                                 print(f"max_root @ {i} {j}=", max_root, "imaginary part =", imag_roots)
                                 print(f"tdm @ {i} {j}=", tdm)
                             self.bonding[i, j] = max_root
+                        else:
+                            min_root_idx = np.argmin(roots.real)
+                            min_root = roots[min_root_idx]
+                            imag_roots = np.iscomplex(roots[min_root_idx])
+                            if self.do_print:
+                                print(f"min_root @ {i} {j}=", min_root, "imaginary part =", imag_roots)
+                                print(f"tdm @ {i} {j}=", tdm)
+                            self.bonding[i, j] = min_root
+                    else:
+                        max_root_idx = np.argmax(roots.real)
+                        max_root = roots[max_root_idx].real
+                        imag_roots = np.iscomplex(roots[max_root_idx])
+                        if self.do_print:
+                            print(f"max_root @ {i} {j}=", max_root, "imaginary part =", imag_roots)
+                            print(f"tdm @ {i} {j}=", tdm)
+                        self.bonding[i, j] = max_root
             self.site_potential = np.diag(dm) / self.K2
         return
 
-    def run(self, pressure=None):
+    def run(self, pressure: float=0.0) -> np.ndarray:
         self.oneshot(pressure=pressure)
         self.int1e = self.int1e * self.bonding
         self.int1e -= np.diag(self.site_potential) 
@@ -99,7 +90,7 @@ class Phonon:
 
 from pyscf import fci
 
-def dm_calculator(int1e, int2e, norb, nelec):
+def dm_calculator(int1e: np.ndarray, int2e: np.ndarray, norb: int, nelec: int) -> np.ndarray:
     cis = fci.direct_spin1.FCISolver()
     e, c = cis.kernel(int1e, int2e, norb, nelec)
     dm1 = cis.make_rdm1(c, norb, nelec)
