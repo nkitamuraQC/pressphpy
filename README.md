@@ -13,7 +13,7 @@ If you use this work in your research, please cite:
 
 ```bibtex
 @misc{
-    yourname2026,   
+    pressphpy2026,
     author       = {Naoki Kitamura},   
     title        = {pressphpy},   
     year         = {2026},   
