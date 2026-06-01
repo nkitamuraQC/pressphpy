@@ -117,5 +117,5 @@ if __name__ == "__main__":
     # print(int1e)
 
     ph = Phonon(int1e, int2e, norb, nelec, dm_calculator)
-    ph.run(max_cycle=1, pressure=5.)
+    ph.run(pressure=5.)
     # ph.clear()
